@@ -184,6 +184,20 @@
   // ─── xterm.js Terminal ───────────────────────────────────
   let xterm = null;
   let fitAddon = null;
+  var lastCols = 0, lastRows = 0;
+  var resizeTimer = null;
+
+  // Send current xterm dimensions to the PTY bridge so it can resize the PTY process.
+  // Must be at this scope so it's callable from ws.onopen and the PTY message handler.
+  function sendResize() {
+    if (ws && ws.readyState === WebSocket.OPEN && xterm) {
+      if (xterm.cols !== lastCols || xterm.rows !== lastRows) {
+        lastCols = xterm.cols;
+        lastRows = xterm.rows;
+        ws.send(JSON.stringify({ type: 'pty_resize', cols: xterm.cols, rows: xterm.rows }));
+      }
+    }
+  }
 
   function initXterm() {
     if (xterm) return;
@@ -221,19 +235,6 @@
     xterm.open(termContainer);
     fitAddon.fit();
 
-    // Send terminal size to PTY so copilot renders correctly
-    var lastCols = 0, lastRows = 0;
-    var resizeTimer = null;
-    function sendResize() {
-      if (ws && ws.readyState === WebSocket.OPEN && xterm) {
-        if (xterm.cols !== lastCols || xterm.rows !== lastRows) {
-          lastCols = xterm.cols;
-          lastRows = xterm.rows;
-          ws.send(JSON.stringify({ type: 'pty_resize', cols: xterm.cols, rows: xterm.rows }));
-        }
-      }
-    }
-
     // Handle resize — debounced to avoid rapid PTY resizes (mobile keyboard, URL bar, etc.)
     window.addEventListener('resize', () => {
       if (resizeTimer) clearTimeout(resizeTimer);
@@ -241,8 +242,6 @@
         if (fitAddon) { fitAddon.fit(); sendResize(); }
       }, 150);
     });
-
-    // Initial size is sent on WS open (see ws.onopen)
 
     // Keyboard input → send to bridge → PTY
     xterm.onData((data) => {
@@ -1088,6 +1087,7 @@
         $('#input-form').classList.add('hidden');
         termContainer.classList.remove('hidden');
         initXterm();
+        sendResize(); // tell the PTY bridge the browser's initial terminal dimensions
       }
       xterm.write(msg.data);
       return;

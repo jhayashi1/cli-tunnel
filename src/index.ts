@@ -535,10 +535,11 @@ wss.on('connection', (ws, req) => {
           ptyProcess.write(msg.data);
         }
       }
-      // pty_resize from remote clients is ignored — PTY stays at local terminal size
-      // The phone's xterm.js handles display via its own viewport/scrolling
-      if (msg.type === 'pty_resize') {
-        // Only log, don't resize — prevents breaking local terminal layout
+      // Resize PTY to match the browser's terminal dimensions so rendering is aligned
+      if (msg.type === 'pty_resize' && ptyProcess) {
+        const c = Math.max(20, Math.min(500, Math.floor(Number(msg.cols))));
+        const r = Math.max(5, Math.min(200, Math.floor(Number(msg.rows))));
+        if (c > 0 && r > 0) ptyProcess.resize(c, r);
       }
       // Grid relay: hub proxies PTY data between phone and local sessions
       if (hubMode && msg.type === 'grid_connect') {
@@ -854,6 +855,9 @@ async function main() {
   ensureSpawnHelperExecutable();
   const cols = process.stdout.columns || 120;
   const rows = process.stdout.rows || 30;
+  // Capture original dimensions so we can restore them on exit
+  const originalCols = cols;
+  const originalRows = rows;
 
   // Resolve command path for node-pty on Windows
   let resolvedCmd = command;
@@ -938,6 +942,8 @@ async function main() {
   ptyProcess.onExit(({ exitCode }: { exitCode: number }) => {
     console.log(`\n${DIM}Process exited (code ${exitCode}).${RESET}`);
     ptyProcess = null;
+    // Restore the terminal to its original dimensions in case the PTY altered them
+    process.stdout.write(`\x1b[8;${originalRows};${originalCols}t`);
     server.close();
     process.exit(exitCode);
   });
