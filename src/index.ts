@@ -111,6 +111,21 @@ const command = hubMode ? '' : cmdArgs[0]!;
 const commandArgs = hubMode ? [] : cmdArgs.slice(1);
 const cwd = process.cwd();
 
+// npm strips execute permissions from prebuilt binaries during publish/install.
+// node-pty's spawn-helper must be executable for posix_spawnp to succeed.
+function ensureSpawnHelperExecutable(): void {
+  if (process.platform === 'win32') return;
+  try {
+    const ptyPkg = import.meta.resolve('node-pty/package.json');
+    const ptyDir = path.dirname(fileURLToPath(ptyPkg));
+    const helperPath = path.join(ptyDir, 'prebuilds', `${process.platform}-${process.arch}`, 'spawn-helper');
+    const stat = fs.statSync(helperPath);
+    if (!(stat.mode & 0o111)) {
+      fs.chmodSync(helperPath, stat.mode | 0o755);
+    }
+  } catch { /* best-effort — if it fails, node-pty's own error will surface */ }
+}
+
 // ─── Tunnel helpers ─────────────────────────────────────────
 function sanitizeLabel(l: string): string {
   const clean = l.replace(/[^a-zA-Z0-9_\-=]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').substring(0, 50);
@@ -836,6 +851,7 @@ async function main() {
 
   // Spawn PTY
   const nodePty = await import('node-pty');
+  ensureSpawnHelperExecutable();
   const cols = process.stdout.columns || 120;
   const rows = process.stdout.rows || 30;
 
