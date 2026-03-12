@@ -2,6 +2,8 @@
  * cli-tunnel — Terminal-Style PWA (ACP Protocol)
  * Raw terminal rendering matching Copilot CLI output
  */
+/* eslint-disable func-style, no-redeclare */
+/* global Terminal, FitAddon */
 (function () {
   'use strict';
 
@@ -75,7 +77,7 @@
       if (xtermEl) canvas = xtermEl.querySelector('canvas');
     }
     if (!canvas || !canvas.captureStream) {
-      if (statusText) { var prev = statusText.textContent; statusText.textContent = 'Recording not supported'; setTimeout(function() { statusText.textContent = prev; }, 3000); }
+      if (statusText) { var prev = statusText.textContent; statusText.textContent = 'Recording not supported'; setTimeout(() => { statusText.textContent = prev; }, 3000); }
       return false;
     }
     try {
@@ -83,27 +85,27 @@
       var mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9'
         : MediaRecorder.isTypeSupported('video/webm;codecs=vp8') ? 'video/webm;codecs=vp8'
         : 'video/webm';
-      mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType, videoBitsPerSecond: 2500000 });
+      mediaRecorder = new MediaRecorder(stream, {mimeType, videoBitsPerSecond: 2500000});
       recordedChunks = [];
       mediaRecorder.ondataavailable = function(e) {
         if (e.data && e.data.size > 0) recordedChunks.push(e.data);
       };
       mediaRecorder.onstop = function() {
-        var blob = new Blob(recordedChunks, { type: mimeType });
+        var blob = new Blob(recordedChunks, {type: mimeType});
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
         var timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
         a.href = url;
-        a.download = 'cli-tunnel-' + timestamp + '.webm';
+        a.download = `cli-tunnel-${ timestamp }.webm`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+        setTimeout(() => { URL.revokeObjectURL(url); }, 5000);
       };
       mediaRecorder.start(1000); // collect data every 1s
       isRecording = true;
       // Auto-stop after 10 minutes to prevent memory issues
-      setTimeout(function() {
+      setTimeout(() => {
         if (isRecording) { toggleRecording(); }
       }, 10 * 60 * 1000);
       return true;
@@ -131,18 +133,18 @@
       if (startRecording()) {
         if (btn) { btn.classList.add('recording'); btn.textContent = '⏹'; btn.title = 'Stop recording & download'; btn.setAttribute('aria-label', 'Stop recording'); }
         var recordStartTime = Date.now();
-        recordTimer = setInterval(function() {
+        recordTimer = setInterval(() => {
           if (!isRecording) { clearInterval(recordTimer); recordTimer = null; return; }
           var elapsed = Math.floor((Date.now() - recordStartTime) / 1000);
           var min = Math.floor(elapsed / 60);
           var sec = elapsed % 60;
-          if (btn) btn.textContent = '⏹ ' + min + ':' + (sec < 10 ? '0' : '') + sec;
+          if (btn) btn.textContent = `⏹ ${ min }:${ sec < 10 ? '0' : '' }${sec}`;
         }, 1000);
       } else {
         // Show error to user
         var prevText = statusText ? statusText.textContent : '';
         if (statusText) { statusText.textContent = 'Recording not available'; }
-        setTimeout(function() { if (statusText && statusText.textContent === 'Recording not available') statusText.textContent = prevText; }, 3000);
+        setTimeout(() => { if (statusText && statusText.textContent === 'Recording not available') statusText.textContent = prevText; }, 3000);
       }
     }
   }
@@ -161,7 +163,7 @@
       if (xtermEl) canvas = xtermEl.querySelector('canvas');
     }
     if (!canvas) {
-      if (statusText) { var prev = statusText.textContent; statusText.textContent = 'No terminal to capture'; setTimeout(function() { statusText.textContent = prev; }, 2000); }
+      if (statusText) { var prev = statusText.textContent; statusText.textContent = 'No terminal to capture'; setTimeout(() => { statusText.textContent = prev; }, 2000); }
       return;
     }
     try {
@@ -169,15 +171,15 @@
       var a = document.createElement('a');
       var timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       a.href = dataUrl;
-      a.download = 'cli-tunnel-' + timestamp + '.png';
+      a.download = `cli-tunnel-${ timestamp }.png`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       // Flash effect
       canvas.style.opacity = '0.5';
-      setTimeout(function() { canvas.style.opacity = '1'; }, 150);
+      setTimeout(() => { canvas.style.opacity = '1'; }, 150);
     } catch (e) {
-      if (statusText) { var prev2 = statusText.textContent; statusText.textContent = 'Screenshot failed'; setTimeout(function() { statusText.textContent = prev2; }, 2000); }
+      if (statusText) { var prev2 = statusText.textContent; statusText.textContent = 'Screenshot failed'; setTimeout(() => { statusText.textContent = prev2; }, 2000); }
     }
   }
 
@@ -194,7 +196,7 @@
       if (xterm.cols !== lastCols || xterm.rows !== lastRows) {
         lastCols = xterm.cols;
         lastRows = xterm.rows;
-        ws.send(JSON.stringify({ type: 'pty_resize', cols: xterm.cols, rows: xterm.rows }));
+        ws.send(JSON.stringify({cols: xterm.cols, rows: xterm.rows, type: 'pty_resize'}));
       }
     }
   }
@@ -202,32 +204,32 @@
   function initXterm() {
     if (xterm) return;
     xterm = new Terminal({
-      theme: {
-        background: '#0d1117',
-        foreground: '#c9d1d9',
-        cursor: '#3fb950',
-        selectionBackground: '#264f78',
-        black: '#0d1117',
-        red: '#f85149',
-        green: '#3fb950',
-        yellow: '#d29922',
-        blue: '#58a6ff',
-        magenta: '#bc8cff',
-        cyan: '#39c5cf',
-        white: '#c9d1d9',
-        brightBlack: '#6e7681',
-        brightRed: '#f85149',
-        brightGreen: '#3fb950',
-        brightYellow: '#d29922',
-        brightBlue: '#58a6ff',
-        brightMagenta: '#bc8cff',
-        brightCyan: '#39c5cf',
-        brightWhite: '#f0f6fc',
-      },
-      fontFamily: "'Cascadia Code', 'SF Mono', 'Fira Code', 'Menlo', monospace",
-      fontSize: 13,
-      scrollback: 5000,
       cursorBlink: true,
+      fontFamily : '\'Cascadia Code\', \'SF Mono\', \'Fira Code\', \'Menlo\', monospace',
+      fontSize   : 13,
+      scrollback : 5000,
+      theme      : {
+        background         : '#0d1117',
+        black              : '#0d1117',
+        blue               : '#58a6ff',
+        brightBlack        : '#6e7681',
+        brightBlue         : '#58a6ff',
+        brightCyan         : '#39c5cf',
+        brightGreen        : '#3fb950',
+        brightMagenta      : '#bc8cff',
+        brightRed          : '#f85149',
+        brightWhite        : '#f0f6fc',
+        brightYellow       : '#d29922',
+        cursor             : '#3fb950',
+        cyan               : '#39c5cf',
+        foreground         : '#c9d1d9',
+        green              : '#3fb950',
+        magenta            : '#bc8cff',
+        red                : '#f85149',
+        selectionBackground: '#264f78',
+        white              : '#c9d1d9',
+        yellow             : '#d29922',
+      },
     });
 
     fitAddon = new FitAddon.FitAddon();
@@ -246,7 +248,7 @@
     // Keyboard input → send to bridge → PTY
     xterm.onData((data) => {
       if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'pty_input', data }));
+        ws.send(JSON.stringify({data, type: 'pty_input'}));
       }
     });
   }
@@ -256,9 +258,9 @@
 
   async function loadSessions() {
     try {
-      var headers = savedToken ? { 'Authorization': 'Bearer ' + savedToken } : {};
-      var resp = await fetch('/api/sessions', { headers: headers });
-      if (!resp.ok) throw new Error('Status ' + resp.status);
+      var headers = savedToken ? {Authorization: `Bearer ${ savedToken}`} : {};
+      var resp = await fetch('/api/sessions', {headers});
+      if (!resp.ok) throw new Error(`Status ${ resp.status}`);
       var data = await resp.json();
       if (!isHubMode) {
         renderNonHubSessions(data.sessions || []);
@@ -266,45 +268,45 @@
         renderDashboard(data.sessions || []);
       }
     } catch (err) {
-      dashboard.innerHTML = '<div style="padding:20px 12px;color:var(--text-dim);text-align:center">' +
-        escapeHtml('Sessions unavailable. Use Hub mode (cli-tunnel with no command) to see all sessions.') + '</div>';
+      dashboard.innerHTML = `<div style="padding:20px 12px;color:var(--text-dim);text-align:center">${
+        escapeHtml('Sessions unavailable. Use Hub mode (cli-tunnel with no command) to see all sessions.') }</div>`;
     }
   }
 
   function renderNonHubSessions(sessions) {
     var currentName = document.title || 'this session';
     var html = '<div class="non-hub-view">' +
-      '<div class="non-hub-current">You\'re connected to: <strong>' + escapeHtml(currentName) + '</strong></div>' +
+      `<div class="non-hub-current">You're connected to: <strong>${ escapeHtml(currentName) }</strong></div>` +
       '<div class="non-hub-back"><a href="#" data-action="back-to-terminal">← Back to terminal</a></div>' +
       '<div class="non-hub-hint">Start a Hub to see all sessions: <code>cli-tunnel</code> (no command)</div>' +
       '</div>';
     dashboard.innerHTML = html;
     var backLink = dashboard.querySelector('[data-action="back-to-terminal"]');
     if (backLink) {
-      backLink.addEventListener('click', function(e) { e.preventDefault(); toggleView(); });
+      backLink.addEventListener('click', (e) => { e.preventDefault(); window.toggleView(); });
     }
   }
 
   function renderDashboard(sessions) {
-    var filtered = showOffline ? sessions : sessions.filter(function(s) { return s.online; });
-    var offlineCount = sessions.filter(function(s) { return !s.online; }).length;
-    var connectable = filtered.filter(function(s) { return s.online && s.hasToken; });
+    var filtered = showOffline ? sessions : sessions.filter((s) => { return s.online; });
+    var offlineCount = sessions.filter((s) => { return !s.online; }).length;
+    var connectable = filtered.filter((s) => { return s.online && s.hasToken; });
     var remoteCount = filtered.length - connectable.length;
 
     // Hub header
     var html = '<div class="hub-header">' +
       '<h2 class="hub-title">cli-tunnel Hub</h2>' +
-      '<div class="hub-stats">' + connectable.length + ' connectable · ' + remoteCount + ' remote' +
-        (offlineCount > 0 ? ' · ' + offlineCount + ' offline' : '') +
-        ' <span class="hub-refresh-indicator" title="Auto-refreshes every 10s">↻</span>' +
+      `<div class="hub-stats">${ connectable.length } connectable · ${ remoteCount } remote${
+        offlineCount > 0 ? ` · ${ offlineCount } offline` : ''
+        } <span class="hub-refresh-indicator" title="Auto-refreshes every 10s">↻</span>` +
       '</div>' +
       '</div>';
 
     // Toolbar actions
     html += '<div class="hub-toolbar">' +
-      '<button data-action="toggle-offline" class="hub-toolbar-btn">' + (showOffline ? 'Hide offline' : 'Show offline') + '</button>' +
-      (offlineCount > 0 ? '<button data-action="clean-offline" class="hub-toolbar-btn hub-toolbar-btn-danger">Clean offline</button>' : '') +
-      '<button data-action="refresh" class="hub-toolbar-btn">↻ Refresh</button>' +
+      `<button data-action="toggle-offline" class="hub-toolbar-btn">${ showOffline ? 'Hide offline' : 'Show offline' }</button>${
+      offlineCount > 0 ? '<button data-action="clean-offline" class="hub-toolbar-btn hub-toolbar-btn-danger">Clean offline</button>' : ''
+      }<button data-action="refresh" class="hub-toolbar-btn">↻ Refresh</button>` +
       '</div>';
 
     // Grid banner when 2+ connectable
@@ -316,28 +318,28 @@
     }
 
     if (filtered.length === 0) {
-      html += '<div style="padding:20px 12px;color:var(--text-dim);text-align:center">' +
-        (sessions.length === 0 ? 'No cli-tunnel sessions found.' : 'No online sessions. Tap "Show offline" to see stale ones.') +
-        '</div>';
+      html += `<div style="padding:20px 12px;color:var(--text-dim);text-align:center">${
+        sessions.length === 0 ? 'No cli-tunnel sessions found.' : 'No online sessions. Tap "Show offline" to see stale ones.'
+        }</div>`;
     } else {
-      filtered.forEach(function(s) {
+      filtered.forEach((s) => {
         var canConnect = s.online && s.hasToken;
-        html += '<div class="session-card-v2' + (canConnect ? ' connectable' : '') + '"' +
-          (canConnect ? ' data-session-port="' + s.port + '" data-session-base-url="' + escapeHtml(s.url) + '"' : '') + '>' +
+        html += `<div class="session-card-v2${ canConnect ? ' connectable' : '' }"${
+          canConnect ? ` data-session-port="${ s.port }" data-session-base-url="${ escapeHtml(s.url) }"` : '' }>` +
           '<div class="card-header">' +
-            '<span class="card-status ' + (s.online ? 'online' : 'offline') + '"></span>' +
-            '<span class="card-name">' + escapeHtml(s.name) + '</span>' +
-            (canConnect ? '<span class="card-connect">Connect →</span>' :
+            `<span class="card-status ${ s.online ? 'online' : 'offline' }"></span>` +
+            `<span class="card-name">${ escapeHtml(s.name) }</span>${
+            canConnect ? '<span class="card-connect">Connect →</span>' :
              s.online ? '<span class="card-remote">Remote 🔒</span>' :
-             '<span class="card-offline">Offline</span>') +
-          '</div>' +
+             '<span class="card-offline">Offline</span>'
+          }</div>` +
           '<div class="card-details">' +
-            '<span>💻 ' + escapeHtml(s.machine) + '</span>' +
-            '<span>📦 ' + escapeHtml(s.repo) + '</span>' +
-            '<span>🌿 ' + escapeHtml(s.branch) + '</span>' +
-          '</div>' +
-          (!s.online ? '<button data-delete-id="' + escapeHtml(s.id) + '" class="card-delete" title="Remove">✕</button>' : '') +
-          '</div>';
+            `<span>💻 ${ escapeHtml(s.machine) }</span>` +
+            `<span>📦 ${ escapeHtml(s.repo) }</span>` +
+            `<span>🌿 ${ escapeHtml(s.branch) }</span>` +
+          `</div>${
+          !s.online ? `<button data-delete-id="${ escapeHtml(s.id) }" class="card-delete" title="Remove">✕</button>` : ''
+          }</div>`;
       });
     }
 
@@ -345,33 +347,33 @@
     cachedSessions = sessions;
 
     // Event delegation
-    dashboard.querySelectorAll('.session-card-v2[data-session-port]').forEach(function(card) {
-      card.addEventListener('click', function(e) {
+    dashboard.querySelectorAll('.session-card-v2[data-session-port]').forEach((card) => {
+      card.addEventListener('click', (e) => {
         if (e.target.closest('[data-delete-id]')) return;
         var port = card.dataset.sessionPort;
         var baseUrl = card.dataset.sessionBaseUrl;
-        var proxyUrl = '/api/proxy/ticket/' + port;
+        var proxyUrl = `/api/proxy/ticket/${ port}`;
         fetch(proxyUrl, {
-          method: 'POST',
-          headers: savedToken ? { 'Authorization': 'Bearer ' + savedToken } : {}
-        }).then(function(r) { return r.json(); }).then(function(data) {
+          headers: savedToken ? {Authorization: `Bearer ${ savedToken}`} : {},
+          method : 'POST',
+        }).then((r) => { return r.json(); }).then((data) => {
           if (data.ticket) {
-            window.location.href = baseUrl + '?ticket=' + encodeURIComponent(data.ticket);
+            window.location.href = `${baseUrl }?ticket=${ encodeURIComponent(data.ticket)}`;
           } else {
             window.location.href = baseUrl;
           }
-        }).catch(function() {
+        }).catch(() => {
           window.location.href = baseUrl;
         });
       });
     });
-    dashboard.querySelectorAll('[data-delete-id]').forEach(function(btn) {
-      btn.addEventListener('click', function(e) { e.stopPropagation(); deleteSession(btn.dataset.deleteId); });
+    dashboard.querySelectorAll('[data-delete-id]').forEach((btn) => {
+      btn.addEventListener('click', (e) => { e.stopPropagation(); window.deleteSession(btn.dataset.deleteId); });
     });
-    dashboard.querySelector('[data-action="toggle-offline"]')?.addEventListener('click', function() { toggleOffline(); });
-    dashboard.querySelector('[data-action="clean-offline"]')?.addEventListener('click', function() { cleanOffline(); });
-    dashboard.querySelector('[data-action="refresh"]')?.addEventListener('click', function() { loadSessions(); });
-    dashboard.querySelector('[data-action="grid-view"]')?.addEventListener('click', function() { showGridView(sessions); });
+    dashboard.querySelector('[data-action="toggle-offline"]')?.addEventListener('click', () => { window.toggleOffline(); });
+    dashboard.querySelector('[data-action="clean-offline"]')?.addEventListener('click', () => { window.cleanOffline(); });
+    dashboard.querySelector('[data-action="refresh"]')?.addEventListener('click', () => { loadSessions(); });
+    dashboard.querySelector('[data-action="grid-view"]')?.addEventListener('click', () => { showGridView(sessions); });
   }
 
   window.openSession = (url) => {
@@ -384,25 +386,25 @@
   };
 
   window.cleanOffline = async () => {
-    const headers = savedToken ? { 'Authorization': 'Bearer ' + savedToken } : {};
-    const resp = await fetch('/api/sessions', { headers });
+    const headers = savedToken ? {Authorization: `Bearer ${ savedToken}`} : {};
+    const resp = await fetch('/api/sessions', {headers});
     const data = await resp.json();
     const offline = (data.sessions || []).filter(s => !s.online);
     for (const s of offline) {
-      await fetch('/api/sessions/' + s.id, { method: 'DELETE', headers });
+      await fetch(`/api/sessions/${ s.id}`, {headers, method: 'DELETE'});
     }
     loadSessions();
   };
 
   window.deleteSession = async (id) => {
-    const headers = savedToken ? { 'Authorization': 'Bearer ' + savedToken } : {};
-    await fetch('/api/sessions/' + id, { method: 'DELETE', headers });
+    const headers = savedToken ? {Authorization: `Bearer ${ savedToken}`} : {};
+    await fetch(`/api/sessions/${ id}`, {headers, method: 'DELETE'});
     loadSessions();
   };
 
   // ─── Grid View (multi-terminal with layout modes) ───────────
   function showGridView(sessions) {
-    var connectable = sessions.filter(function(s) { return s.online && s.hasToken; });
+    var connectable = sessions.filter((s) => { return s.online && s.hasToken; });
     if (connectable.length === 0) return;
 
     // Clean up previous grid
@@ -431,17 +433,17 @@
     toolbar.className = 'grid-toolbar';
 
     var modes = [
-      { id: 'thumbnails', label: '\u229E Tiles' },
-      { id: 'tmux', label: '\u229F Tmux' },
-      { id: 'focus', label: '\u25C9 Focus' },
-      { id: 'fullscreen', label: '\u2A21 Full' }
+      {id: 'thumbnails', label: '\u229E Tiles'},
+      {id: 'tmux', label: '\u229F Tmux'},
+      {id: 'focus', label: '\u25C9 Focus'},
+      {id: 'fullscreen', label: '\u2A21 Full'},
     ];
-    modes.forEach(function(m) {
+    modes.forEach((m) => {
       var btn = document.createElement('button');
       btn.textContent = m.label;
       btn.dataset.mode = m.id;
       if (m.id === gridMode) btn.classList.add('active');
-      btn.addEventListener('click', function() { switchGridMode(m.id); });
+      btn.addEventListener('click', () => { switchGridMode(m.id); });
       toolbar.appendChild(btn);
     });
 
@@ -450,16 +452,16 @@
     presetGroup.className = 'grid-toolbar-presets hidden';
     presetGroup.id = 'tmux-presets';
     var presets = [
-      { id: 'equal', label: '\u2550 Equal' },
-      { id: 'main-side', label: '\u2590 Main+Side' },
-      { id: 'stacked', label: '\u2261 Stacked' }
+      {id: 'equal', label: '\u2550 Equal'},
+      {id: 'main-side', label: '\u2590 Main+Side'},
+      {id: 'stacked', label: '\u2261 Stacked'},
     ];
-    presets.forEach(function(p) {
+    presets.forEach((p) => {
       var btn = document.createElement('button');
       btn.textContent = p.label;
       btn.dataset.preset = p.id;
       if (p.id === tmuxPreset) btn.classList.add('active');
-      btn.addEventListener('click', function() { switchTmuxPreset(p.id); });
+      btn.addEventListener('click', () => { switchTmuxPreset(p.id); });
       presetGroup.appendChild(btn);
     });
     toolbar.appendChild(presetGroup);
@@ -470,7 +472,7 @@
 
     var listBtn = document.createElement('button');
     listBtn.textContent = '\u2190 List';
-    listBtn.addEventListener('click', function() {
+    listBtn.addEventListener('click', () => {
       destroyGrid();
       currentView = 'dashboard';
       dashboard.classList.remove('hidden');
@@ -486,7 +488,7 @@
     gridEl.appendChild(contentEl);
 
     // ── Create panels & connect ──
-    connectable.forEach(function(s, index) {
+    connectable.forEach((s, index) => {
       var panel = document.createElement('div');
       panel.className = 'grid-panel';
       panel.dataset.index = index;
@@ -516,37 +518,37 @@
 
       // xterm instance
       var panelXterm = new Terminal({
-        theme: {
-          background: '#0d1117', foreground: '#c9d1d9', cursor: '#3fb950',
+        cursorBlink: true,
+        fontFamily : '\'Cascadia Code\', \'SF Mono\', \'Fira Code\', \'Menlo\', monospace',
+        fontSize   : 11,
+        scrollback : 1000,
+        theme      : {
+          background         : '#0d1117', cursor             : '#3fb950', foreground         : '#c9d1d9',
           selectionBackground: '#264f78',
         },
-        fontFamily: "'Cascadia Code', 'SF Mono', 'Fira Code', 'Menlo', monospace",
-        fontSize: 11,
-        scrollback: 1000,
-        cursorBlink: true,
       });
       var panelFit = new FitAddon.FitAddon();
       panelXterm.loadAddon(panelFit);
       panelXterm.open(termDiv);
 
       // Store entry before async connect so index is stable
-      var entry = { xterm: panelXterm, fitAddon: panelFit, session: s, panel: panel };
+      var entry = {fitAddon: panelFit, panel, session: s, xterm: panelXterm};
       gridTerminals.push(entry);
 
       // Connect via hub relay — send grid_connect message
       if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'grid_connect', port: s.port }));
+        ws.send(JSON.stringify({port: s.port, type: 'grid_connect'}));
       }
 
-      panelXterm.onData(function(data) {
+      panelXterm.onData((data) => {
         if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'grid_input', port: s.port, data: data }));
+          ws.send(JSON.stringify({data, port: s.port, type: 'grid_input'}));
         }
       });
     });
 
     // ── Event delegation for panel clicks ──
-    contentEl.addEventListener('click', function(e) {
+    contentEl.addEventListener('click', (e) => {
       var panel = e.target.closest('.grid-panel');
       if (!panel) return;
       var idx = parseInt(panel.dataset.index, 10);
@@ -560,7 +562,7 @@
         applyGridLayout('focus');
       } else if (gridMode === 'tmux') {
         focusedIndex = idx;
-        contentEl.querySelectorAll('.grid-panel').forEach(function(p) { p.classList.remove('active'); });
+        contentEl.querySelectorAll('.grid-panel').forEach((p) => { p.classList.remove('active'); });
         panel.classList.add('active');
       }
     });
@@ -589,7 +591,7 @@
     tmuxPreset = preset;
     var presetGroup = document.getElementById('tmux-presets');
     if (presetGroup) {
-      presetGroup.querySelectorAll('[data-preset]').forEach(function(btn) {
+      presetGroup.querySelectorAll('[data-preset]').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.preset === preset);
       });
     }
@@ -607,7 +609,7 @@
     // Update toolbar button states
     var toolbar = contentEl.parentElement.querySelector('.grid-toolbar');
     if (toolbar) {
-      toolbar.querySelectorAll('[data-mode]').forEach(function(btn) {
+      toolbar.querySelectorAll('[data-mode]').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.mode === mode);
       });
       var presetsEl = document.getElementById('tmux-presets');
@@ -615,7 +617,7 @@
     }
 
     // Detach all panels without destroying them
-    gridTerminals.forEach(function(gt, i) {
+    gridTerminals.forEach((gt, i) => {
       if (gt.panel.parentNode) gt.panel.parentNode.removeChild(gt.panel);
       gt.panel.className = 'grid-panel';
       gt.panel.dataset.index = i;
@@ -628,40 +630,10 @@
     while (contentEl.firstChild) contentEl.removeChild(contentEl.firstChild);
 
     // Reset content styles
-    contentEl.className = 'mode-' + mode;
+    contentEl.className = `mode-${ mode}`;
     contentEl.style.cssText = '';
 
     switch (mode) {
-      case 'thumbnails':
-        gridTerminals.forEach(function(gt) {
-          gt.panel.classList.add('thumbnail');
-          var termDiv = gt.panel.querySelector('.grid-panel-terminal');
-          termDiv.style.width = '560px';
-          termDiv.style.height = '360px';
-          termDiv.style.transform = 'scale(0.5)';
-          termDiv.style.transformOrigin = 'top left';
-          contentEl.appendChild(gt.panel);
-        });
-        break;
-
-      case 'tmux':
-        gridTerminals.forEach(function(gt, i) {
-          if (i === focusedIndex) gt.panel.classList.add('active');
-          contentEl.appendChild(gt.panel);
-        });
-        if (tmuxPreset === 'equal') {
-          var cols = gridTerminals.length <= 2 ? gridTerminals.length : gridTerminals.length <= 4 ? 2 : 3;
-          contentEl.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
-        } else if (tmuxPreset === 'main-side') {
-          contentEl.style.gridTemplateColumns = '70% 30%';
-          var sideCount = Math.max(gridTerminals.length - 1, 1);
-          contentEl.style.gridTemplateRows = 'repeat(' + sideCount + ', 1fr)';
-          if (gridTerminals.length > 0) gridTerminals[0].panel.style.gridRow = '1 / -1';
-        } else if (tmuxPreset === 'stacked') {
-          contentEl.style.gridTemplateColumns = '1fr';
-        }
-        break;
-
       case 'focus':
         var mainGt = gridTerminals[focusedIndex];
         mainGt.panel.classList.add('focus-main');
@@ -669,7 +641,7 @@
         if (gridTerminals.length > 1) {
           var stripsEl = document.createElement('div');
           stripsEl.className = 'focus-strips';
-          gridTerminals.forEach(function(gt, i) {
+          gridTerminals.forEach((gt, i) => {
             if (i === focusedIndex) return;
             gt.panel.classList.add('focus-strip');
             stripsEl.appendChild(gt.panel);
@@ -685,19 +657,49 @@
         var backBtn = document.createElement('button');
         backBtn.className = 'back-to-grid';
         backBtn.textContent = '\u2190 Grid';
-        backBtn.addEventListener('click', function() { switchGridMode('thumbnails'); });
+        backBtn.addEventListener('click', () => { switchGridMode('thumbnails'); });
         contentEl.appendChild(backBtn);
+        break;
+
+      case 'thumbnails':
+        gridTerminals.forEach((gt) => {
+          gt.panel.classList.add('thumbnail');
+          var termDiv = gt.panel.querySelector('.grid-panel-terminal');
+          termDiv.style.width = '560px';
+          termDiv.style.height = '360px';
+          termDiv.style.transform = 'scale(0.5)';
+          termDiv.style.transformOrigin = 'top left';
+          contentEl.appendChild(gt.panel);
+        });
+        break;
+
+      case 'tmux':
+        gridTerminals.forEach((gt, i) => {
+          if (i === focusedIndex) gt.panel.classList.add('active');
+          contentEl.appendChild(gt.panel);
+        });
+        if (tmuxPreset === 'equal') {
+          var cols = gridTerminals.length <= 2 ? gridTerminals.length : gridTerminals.length <= 4 ? 2 : 3;
+          contentEl.style.gridTemplateColumns = `repeat(${ cols }, 1fr)`;
+        } else if (tmuxPreset === 'main-side') {
+          contentEl.style.gridTemplateColumns = '70% 30%';
+          var sideCount = Math.max(gridTerminals.length - 1, 1);
+          contentEl.style.gridTemplateRows = `repeat(${ sideCount }, 1fr)`;
+          if (gridTerminals.length > 0) gridTerminals[0].panel.style.gridRow = '1 / -1';
+        } else if (tmuxPreset === 'stacked') {
+          contentEl.style.gridTemplateColumns = '1fr';
+        }
         break;
     }
 
     // Fit visible terminals after DOM settles
-    setTimeout(function() {
-      gridTerminals.forEach(function(gt) {
+    setTimeout(() => {
+      gridTerminals.forEach((gt) => {
         if (!document.contains(gt.panel)) return;
         if (gt.fitAddon) {
           try {
             gt.fitAddon.fit();
-          } catch(e) {}
+          } catch(e) { /* fit may fail if not attached */ }
         }
       });
     }, 100);
@@ -706,15 +708,15 @@
   var gridResizeTimer = null;
   function fitGridPanels() {
     if (gridResizeTimer) clearTimeout(gridResizeTimer);
-    gridResizeTimer = setTimeout(function() {
-      gridTerminals.forEach(function(gt) {
+    gridResizeTimer = setTimeout(() => {
+      gridTerminals.forEach((gt) => {
         if (!document.contains(gt.panel)) return;
         if (gt.fitAddon) {
           try {
             var prevCols = gt.xterm ? gt.xterm.cols : 0;
             var prevRows = gt.xterm ? gt.xterm.rows : 0;
             gt.fitAddon.fit();
-          } catch(e) {}
+          } catch(e) { /* fit may fail if not attached */ }
         }
       });
     }, 150);
@@ -722,8 +724,8 @@
 
   function destroyGrid() {
     if (isRecording) { stopRecording(); var btn = document.getElementById('btn-record'); if (btn) { btn.classList.remove('recording'); btn.textContent = '⏺'; btn.title = 'Record terminal'; } }
-    gridTerminals.forEach(function(gt) {
-      if (gt.xterm) { try { gt.xterm.dispose(); } catch(e) {} }
+    gridTerminals.forEach((gt) => {
+      if (gt.xterm) { try { gt.xterm.dispose(); } catch(e) { /* already disposed */ } }
     });
     gridTerminals = [];
     window.removeEventListener('resize', fitGridPanels);
@@ -817,9 +819,9 @@
 
   // ─── Tool Call Rendering ─────────────────────────────────
   function renderToolCall(update) {
-    const id = update.id || update.toolCallId || ('tc-' + Date.now());
+    const id = update.id || update.toolCallId || (`tc-${ Date.now()}`);
     const name = update.name || 'tool';
-    const icons = { read: '📖', edit: '✏️', write: '✏️', shell: '▶️', search: '🔍', think: '💭', fetch: '🌐' };
+    const icons = {edit: '✏️', fetch: '🌐', read: '📖', search: '🔍', shell: '▶️', think: '💭', write: '✏️'};
     const guessKind = name.includes('read') ? 'read' : name.includes('edit') || name.includes('write') ? 'edit' :
       name.includes('shell') || name.includes('exec') || name.includes('run') ? 'shell' :
       name.includes('search') || name.includes('grep') || name.includes('glob') ? 'search' :
@@ -828,11 +830,11 @@
 
     const el = document.createElement('div');
     el.className = 'tool-call';
-    el.id = 'tool-' + id;
+    el.id = `tool-${ id}`;
     el.dataset.toolId = id;
 
     const inputStr = update.input ? (typeof update.input === 'string' ? update.input : JSON.stringify(update.input)) : '';
-    const shortInput = inputStr.length > 80 ? inputStr.substring(0, 80) + '...' : inputStr;
+    const shortInput = inputStr.length > 80 ? `${inputStr.substring(0, 80) }...` : inputStr;
 
     el.innerHTML = `<span class="tool-icon">${icon}</span><span class="tool-name">${escapeHtml(name)}</span> ${escapeHtml(shortInput)}<span class="tool-status in_progress">⟳</span><div class="tool-body"></div>`;
     el.addEventListener('click', () => el.classList.toggle('expanded'));
@@ -854,7 +856,7 @@
 
       const badge = el.querySelector('.tool-status');
       if (badge) {
-        badge.className = 'tool-status ' + update.status;
+        badge.className = `tool-status ${ update.status}`;
         badge.textContent = update.status === 'completed' ? '✓' : update.status === 'failed' || update.status === 'errored' ? '✗' : '⟳';
       }
     }
@@ -884,8 +886,8 @@
   function sendRequest(method, params, timeoutMs) {
     return new Promise((resolve, reject) => {
       const id = ++requestId;
-      pendingRequests[id] = { resolve, reject };
-      const msg = JSON.stringify({ jsonrpc: '2.0', id, method, params });
+      pendingRequests[id] = {reject, resolve};
+      const msg = JSON.stringify({id, jsonrpc: '2.0', method, params});
       if (ws && ws.readyState === WebSocket.OPEN) ws.send(msg);
       const timeout = timeoutMs !== undefined ? timeoutMs : (method === 'initialize' ? 60000 : 120000);
       if (timeout > 0) {
@@ -904,22 +906,22 @@
 
     try {
       const result = await sendRequest('initialize', {
-        protocolVersion: 1, clientCapabilities: {},
-        clientInfo: { name: 'squad-rc', title: 'Squad RC', version: '1.0.0' },
+        clientCapabilities: {}, clientInfo        : {name: 'squad-rc', title: 'Squad RC', version: '1.0.0'},
+        protocolVersion   : 1,
       });
-      writeSys('Connected to Copilot ' + (result.agentInfo?.version || ''));
-      const sessionResult = await sendRequest('session/new', { cwd: '.', mcpServers: [] });
+      writeSys(`Connected to Copilot ${ result.agentInfo?.version || ''}`);
+      const sessionResult = await sendRequest('session/new', {cwd: '.', mcpServers: []});
       sessionId = sessionResult.sessionId;
       acpReady = true;
       setStatus('online', 'Ready');
       writeSys('Session ready. Type a message below.');
     } catch (err) {
       if (attempt < 5) {
-        writeSys('Not ready, retrying in 5s... (' + attempt + '/5)');
+        writeSys(`Not ready, retrying in 5s... (${ attempt }/5)`);
         setTimeout(() => initializeACP(attempt + 1), 5000);
       } else {
         setStatus('offline', 'Failed');
-        writeSys('Failed to connect: ' + err.message);
+        writeSys(`Failed to connect: ${ err.message}`);
       }
     }
   }
@@ -947,17 +949,17 @@
         var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
         try {
           var resp = await fetch('/api/auth/ticket', {
-            method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + savedToken }
+            headers: {Authorization: `Bearer ${ savedToken}`},
+            method : 'POST',
           });
           if (resp.ok) {
             var data = await resp.json();
-            ws = new WebSocket(proto + '//' + location.host + '?ticket=' + encodeURIComponent(data.ticket));
+            ws = new WebSocket(`${proto }//${ location.host }?ticket=${ encodeURIComponent(data.ticket)}`);
             ws.onopen = function() { connected = true; console.log('[hub] WS connected for grid relay'); };
             ws.onclose = function() { connected = false; ws = null; };
             ws.onerror = function() { ws = null; };
             ws.onmessage = function(e) {
-              try { handleMessage(JSON.parse(e.data)); } catch(err) {}
+              try { handleMessage(JSON.parse(e.data)); } catch(err) { /* malformed message */ }
             };
           }
         } catch(err) { console.log('[hub] WS connect failed:', err); }
@@ -985,11 +987,11 @@
       // Exchange token for ticket
       try {
         var resp = await fetch('/api/auth/ticket', {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + savedToken }
+          headers: {Authorization: `Bearer ${ savedToken}`},
+          method : 'POST',
         });
         if (resp.ok) {
-          const { ticket } = await resp.json();
+          const {ticket} = await resp.json();
           ws = new WebSocket(`${proto}//${location.host}?ticket=${encodeURIComponent(ticket)}`);
         } else {
           setStatus('offline', 'Auth failed');
@@ -1026,12 +1028,12 @@
       try {
         const msg = JSON.parse(e.data);
         handleMessage(msg);
-      } catch {}
+      } catch { /* malformed message */ }
     };
   }
 
   // Reconnect immediately when phone comes back from background
-  document.addEventListener('visibilitychange', function() {
+  document.addEventListener('visibilitychange', () => {
     if (!document.hidden && !connected && !isHubMode) {
       reconnectAttempt = 0;
       connect();
@@ -1043,7 +1045,7 @@
     // Replay events from bridge recording
     if (msg.type === '_replay') {
       replaying = true;
-      try { handleMessage(JSON.parse(msg.data)); } catch {}
+      try { handleMessage(JSON.parse(msg.data)); } catch { /* malformed replay */ }
       return;
     }
     if (msg.type === '_replay_done') {
@@ -1054,13 +1056,13 @@
 
     // Grid relay messages from hub
     if (msg.type === 'grid_pty') {
-      var gt = gridTerminals.find(function(g) { return g.session && g.session.port === msg.port; });
+      var gt = gridTerminals.find((g) => { return g.session && g.session.port === msg.port; });
       if (gt && gt.xterm) { gt.xterm.write(msg.data); }
       return;
     }
 
     if (msg.type === 'grid_connected') {
-      var gt = gridTerminals.find(function(g) { return g.session && g.session.port === msg.port; });
+      var gt = gridTerminals.find((g) => { return g.session && g.session.port === msg.port; });
       if (gt) {
         var dot = gt.panel.querySelector('.grid-panel-status');
         if (dot) { dot.style.color = 'var(--green)'; dot.title = 'Connected'; }
@@ -1069,7 +1071,7 @@
     }
 
     if (msg.type === 'grid_disconnected') {
-      var gt = gridTerminals.find(function(g) { return g.session && g.session.port === msg.port; });
+      var gt = gridTerminals.find((g) => { return g.session && g.session.port === msg.port; });
       if (gt) {
         var dot = gt.panel.querySelector('.grid-panel-status');
         if (dot) { dot.style.color = 'var(--red)'; dot.title = 'Disconnected'; }
@@ -1137,13 +1139,14 @@
 
     // Color codes → spans
     const colorMap = {
-      '30': '#6e7681', '31': '#f85149', '32': '#3fb950', '33': '#d29922',
-      '34': '#58a6ff', '35': '#bc8cff', '36': '#39c5cf', '37': '#c9d1d9',
-      '90': '#6e7681', '91': '#f85149', '92': '#3fb950', '93': '#d29922',
-      '94': '#58a6ff', '95': '#bc8cff', '96': '#39c5cf', '97': '#f0f6fc',
+      30: '#6e7681', 31: '#f85149', 32: '#3fb950', 33: '#d29922',
+      34: '#58a6ff', 35: '#bc8cff', 36: '#39c5cf', 37: '#c9d1d9',
+      90: '#6e7681', 91: '#f85149', 92: '#3fb950', 93: '#d29922',
+      94: '#58a6ff', 95: '#bc8cff', 96: '#39c5cf', 97: '#f0f6fc',
     };
 
     // Replace \x1b[Xm patterns
+    // eslint-disable-next-line no-control-regex
     html = html.replace(/\x1b\[(\d+)m/g, (_, code) => {
       if (code === '0') return '</span>';
       if (code === '1') return '<span style="font-weight:bold">';
@@ -1154,6 +1157,7 @@
     });
 
     // Clean up escape sequences we don't handle
+    // eslint-disable-next-line no-control-regex
     html = html.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
     // Clean \r
     html = html.replace(/\r/g, '');
@@ -1168,7 +1172,7 @@
     const toolCall = p.toolCall || {};
     const title = toolCall.title || p.tool || 'Tool action';
     const kind = toolCall.kind || 'unknown';
-    const kindIcons = { read: '📖', edit: '✏️', execute: '▶️', delete: '🗑️' };
+    const kindIcons = {delete: '🗑️', edit: '✏️', execute: '▶️', read: '📖'};
     const icon = kindIcons[kind] || '🔧';
     // For shell commands, show just the first line
     const command = toolCall.rawInput?.command || toolCall.rawInput?.commands?.[0] || '';
@@ -1188,7 +1192,7 @@
   }
   window.handlePerm = (id, approved) => {
     if (ws?.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ jsonrpc: '2.0', id, result: { outcome: approved ? 'approved' : 'denied' } }));
+      ws.send(JSON.stringify({id, jsonrpc: '2.0', result: {outcome: approved ? 'approved' : 'denied'}}));
     }
     permOverlay.classList.add('hidden');
   };
@@ -1198,10 +1202,10 @@
   const keyBar = document.getElementById('key-bar');
   if (keyBar) {
     var keyMap = {
-      '\\x1b[A': '\x1b[A', '\\x1b[B': '\x1b[B', '\\x1b[C': '\x1b[C', '\\x1b[D': '\x1b[D',
-      '\\t': '\t', '\\r': '\r', '\\x1b': '\x1b', '\\x03': '\x03', ' ': ' ', '\\x7f': '\x7f',
+      ' '      : ' ', '\\r'    : '\r', '\\t'    : '\t', '\\x1b'  : '\x1b',
+      '\\x1b[A': '\x1b[A', '\\x1b[B': '\x1b[B', '\\x1b[C': '\x1b[C', '\\x1b[D': '\x1b[D', '\\x03'  : '\x03', '\\x7f'  : '\x7f',
     };
-    keyBar.addEventListener('click', function(e) {
+    keyBar.addEventListener('click', (e) => {
       var btn = e.target;
       if (btn && btn.tagName === 'BUTTON' && btn.dataset.action === 'toggle-record') {
         toggleRecording();
@@ -1216,12 +1220,12 @@
         if (currentView === 'grid' && gridMode === 'fullscreen' && gridTerminals[focusedIndex]) {
           var gt = gridTerminals[focusedIndex];
           if (ws && ws.readyState === WebSocket.OPEN && gt.session) {
-            ws.send(JSON.stringify({ type: 'grid_input', port: gt.session.port, data: key }));
+            ws.send(JSON.stringify({data: key, port: gt.session.port, type: 'grid_input'}));
           }
           if (gt.xterm) gt.xterm.focus();
         } else {
           if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'pty_input', data: key }));
+            ws.send(JSON.stringify({data: key, type: 'pty_input'}));
           }
           if (xterm) xterm.focus();
         }
@@ -1231,7 +1235,7 @@
 
   window.sendKey = (key) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'pty_input', data: key }));
+      ws.send(JSON.stringify({data: key, type: 'pty_input'}));
     }
     if (xterm) xterm.focus();
   };
@@ -1256,11 +1260,11 @@
     writeUserInput(text);
     try {
       await sendRequest('session/prompt', {
-        sessionId, prompt: [{ type: 'text', text }],
+        prompt: [{text, type: 'text'}], sessionId,
       }, 0);
     } catch (err) {
       endStreaming();
-      writeSys('Error: ' + err.message);
+      writeSys(`Error: ${ err.message}`);
     }
   });
 
