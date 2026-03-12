@@ -63,6 +63,8 @@ ${BOLD}Usage:${RESET}
 
 ${BOLD}Options:${RESET}
   --local            Disable devtunnel (localhost only)
+  --anon, -a         Allow anonymous access to the tunnel (no devtunnel login required)
+  --max-users <n>    Max simultaneous WebSocket connections (default: 5)
   --port <n>         Bridge port (default: random)
   --name <name>      Session name (shown in dashboard)
   --replay           (deprecated, screen buffer is always on)
@@ -86,21 +88,24 @@ pass through to the underlying app. cli-tunnel's own flags
 
 const hasLocal = args.includes('--local');
 const hasTunnel = !hasLocal;
+const anonMode = args.includes('--anon') || args.includes('-a');
 const hasReplay = !args.includes('--no-replay');
 const noWait = args.includes('--no-wait');
 const portIdx = args.indexOf('--port');
 const port = (portIdx !== -1 && args[portIdx + 1]) ? parseInt(args[portIdx + 1]!, 10) : 0;
 const nameIdx = args.indexOf('--name');
 const sessionName = (nameIdx !== -1 && args[nameIdx + 1]) ? args[nameIdx + 1]! : '';
+const maxUsersIdx = args.indexOf('--max-users');
+const maxUsers = (maxUsersIdx !== -1 && args[maxUsersIdx + 1]) ? parseInt(args[maxUsersIdx + 1]!, 10) : 5;
 
 // Everything that's not our flags is the command
-const ourFlags = new Set(['--local', '--tunnel', '--port', '--name', '--no-replay', '--no-wait']);
+const ourFlags = new Set(['--local', '--tunnel', '--anon', '-a', '--port', '--name', '--max-users', '--no-replay', '--no-wait']);
 const cmdArgs: string[] = [];
 let skip = false;
 for (let i = 0; i < args.length; i++) {
   if (skip) { skip = false; continue; }
-  if (args[i] === '--port' || args[i] === '--name') { skip = true; continue; }
-  if (args[i] === '--local' || args[i] === '--tunnel' || args[i] === '--no-replay' || args[i] === '--no-wait') continue;
+  if (args[i] === '--port' || args[i] === '--name' || args[i] === '--max-users') { skip = true; continue; }
+  if (args[i] === '--local' || args[i] === '--tunnel' || args[i] === '--anon' || args[i] === '-a' || args[i] === '--no-replay' || args[i] === '--no-wait') continue;
   cmdArgs.push(args[i]!);
 }
 
@@ -481,7 +486,7 @@ wss.on('error', (err) => {
 
 wss.on('connection', (ws, req) => {
   // F-10: Connection cap (global + per-IP)
-  if (connections.size >= 5) {
+  if (connections.size >= maxUsers) {
     ws.close(1013, 'Max connections reached');
     return;
   }
@@ -727,32 +732,34 @@ async function main() {
     }
 
     if (devtunnelInstalled) {
-      // Check if logged in before attempting tunnel creation
-      try {
-        const userInfo = execFileSync('devtunnel', ['user', 'show'], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], env: getSubprocessEnv() });
-        if (userInfo.includes('not logged in') || userInfo.includes('No user') || userInfo.includes('Anonymous')) {
-          throw new Error('not logged in');
-        }
-      } catch {
-        console.log(`\n  ${YELLOW}⚠ devtunnel not authenticated.${RESET}\n`);
-        const loginAnswer = await askUser(`  Would you like to log in now? [Y/n] `);
-        if (loginAnswer === '' || loginAnswer === 'y' || loginAnswer === 'yes') {
-          try {
-            const loginProc = spawn('devtunnel', ['user', 'login'], { stdio: 'inherit', env: getSubprocessEnv() });
-            await new Promise<void>((resolve, reject) => {
-              loginProc.on('close', (code) => code === 0 ? resolve() : reject(new Error(`Login exited with code ${code}`)));
-              loginProc.on('error', reject);
-            });
-            console.log(`\n  ${GREEN}✓${RESET} Logged in successfully!\n`);
-          } catch {
-            console.log(`\n  ${YELLOW}⚠${RESET} Login failed. Run manually: ${GREEN}devtunnel user login${RESET}\n`);
+      // Check if logged in before attempting tunnel creation (skip in anon mode)
+      if (!anonMode) {
+        try {
+          const userInfo = execFileSync('devtunnel', ['user', 'show'], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], env: getSubprocessEnv() });
+          if (userInfo.includes('not logged in') || userInfo.includes('No user') || userInfo.includes('Anonymous')) {
+            throw new Error('not logged in');
+          }
+        } catch {
+          console.log(`\n  ${YELLOW}⚠ devtunnel not authenticated.${RESET}\n`);
+          const loginAnswer = await askUser(`  Would you like to log in now? [Y/n] `);
+          if (loginAnswer === '' || loginAnswer === 'y' || loginAnswer === 'yes') {
+            try {
+              const loginProc = spawn('devtunnel', ['user', 'login'], { stdio: 'inherit', env: getSubprocessEnv() });
+              await new Promise<void>((resolve, reject) => {
+                loginProc.on('close', (code) => code === 0 ? resolve() : reject(new Error(`Login exited with code ${code}`)));
+                loginProc.on('error', reject);
+              });
+              console.log(`\n  ${GREEN}✓${RESET} Logged in successfully!\n`);
+            } catch {
+              console.log(`\n  ${YELLOW}⚠${RESET} Login failed. Run manually: ${GREEN}devtunnel user login${RESET}\n`);
+              console.log(`  ${DIM}Continuing without tunnel (local only)...${RESET}\n`);
+              devtunnelInstalled = false;
+            }
+          } else {
+            console.log(`\n  ${DIM}Run this once to log in: ${GREEN}devtunnel user login${RESET}`);
             console.log(`  ${DIM}Continuing without tunnel (local only)...${RESET}\n`);
             devtunnelInstalled = false;
           }
-        } else {
-          console.log(`\n  ${DIM}Run this once to log in: ${GREEN}devtunnel user login${RESET}`);
-          console.log(`  ${DIM}Continuing without tunnel (local only)...${RESET}\n`);
-          devtunnelInstalled = false;
         }
       }
     }
@@ -761,11 +768,11 @@ async function main() {
       try {
       const labelValues = ['cli-tunnel', sanitizeLabel(sessionName || command), sanitizeLabel(repo), sanitizeLabel(branch), sanitizeLabel(machine), `port-${actualPort}`];
       const labelArgs = labelValues.flatMap(l => ['--labels', l]);
-      const createOut = execFileSync('devtunnel', ['create', ...labelArgs, '--expiration', '1d', '--json'], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], env: getSubprocessEnv() });
+      const createOut = execFileSync('devtunnel', ['create', ...labelArgs, '--expiration', '1d', ...(anonMode ? ['--allow-anonymous'] : []), '--json'], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], env: getSubprocessEnv() });
       const tunnelId = JSON.parse(createOut).tunnel?.tunnelId?.split('.')[0];
       const cluster = JSON.parse(createOut).tunnel?.tunnelId?.split('.')[1] || 'euw';
       execFileSync('devtunnel', ['port', 'create', tunnelId, '-p', String(actualPort), '--protocol', 'http'], { stdio: 'pipe', env: getSubprocessEnv() });
-      const hostProc = spawn('devtunnel', ['host', tunnelId], { stdio: 'pipe', detached: false, env: getSubprocessEnv() });
+      const hostProc = spawn('devtunnel', ['host', tunnelId, ...(anonMode ? ['--allow-anonymous'] : [])], { stdio: 'pipe', detached: false, env: getSubprocessEnv() });
 
       const url = await new Promise<string>((resolve, reject) => {
         const timeout = setTimeout(() => reject(new Error('Tunnel timeout')), 15000);
@@ -788,7 +795,10 @@ async function main() {
       try {
         // @ts-ignore
         const qr = (await import('qrcode-terminal')) as any;
-        qr.default.generate(tunnelUrlWithToken, { small: true }, (code: string) => console.log(code));
+        const qrModule = qr.default ?? qr;
+        await new Promise<void>((resolve) => {
+          qrModule.generate(tunnelUrlWithToken, { small: true }, (code: string) => { console.log(code); resolve(); });
+        });
       } catch {}
 
       process.on('SIGINT', () => { removeSessionFile(); hostProc.kill(); try { execFileSync('devtunnel', ['delete', tunnelId, '--force'], { stdio: 'pipe', env: getSubprocessEnv() }); } catch {} });
