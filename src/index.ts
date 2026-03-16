@@ -129,6 +129,7 @@ ${BOLD}Options:${RESET}
   --max-users <n>    Max simultaneous WebSocket connections (default: 5)
   --port <n>         Bridge port (default: random)
   --name <name>      Session name (shown in dashboard)
+  --experimental-resizing  Allow remote clients to resize the PTY
   --replay           (deprecated, screen buffer is always on)
   --help, -h         Show this help
 
@@ -152,6 +153,7 @@ const hasLocal = args.includes('--local');
 const hasTunnel = !hasLocal;
 const anonMode = args.includes('--anon') || args.includes('-a');
 const noWait = args.includes('--no-wait');
+const experimentalResizing = args.includes('--experimental-resizing');
 const portIdx = args.indexOf('--port');
 const port = (portIdx !== -1 && args[portIdx + 1]) ? parseInt(args[portIdx + 1]!, 10) : 0;
 const nameIdx = args.indexOf('--name');
@@ -161,7 +163,7 @@ const maxUsers = (maxUsersIdx !== -1 && args[maxUsersIdx + 1]) ? parseInt(args[m
 
 // Everything that's not our flags is the command
 const flagsWithValue = new Set(['--max-users', '--name', '--port']);
-const booleanFlags = new Set(['--anon', '--local', '--no-replay', '--no-wait', '--tunnel', '-a']);
+const booleanFlags = new Set(['--anon', '--experimental-resizing', '--local', '--no-replay', '--no-wait', '--tunnel', '-a']);
 const cmdArgs: string[] = [];
 let skip = false;
 for (let i = 0; i < args.length; i++) {
@@ -595,7 +597,7 @@ wss.on('connection', (ws, req) => {
                 }
             }
             // Resize PTY to match the browser's terminal dimensions so rendering is aligned
-            if (msg.type === 'pty_resize' && ptyProcess) {
+            if (msg.type === 'pty_resize' && ptyProcess && experimentalResizing) {
                 const c = Math.max(PTY_MIN_COLS, Math.min(PTY_MAX_COLS, Math.floor(Number(msg.cols))));
                 const r = Math.max(PTY_MIN_ROWS, Math.min(PTY_MAX_ROWS, Math.floor(Number(msg.rows))));
                 if (c > 0 && r > 0) ptyProcess.resize(c, r);
